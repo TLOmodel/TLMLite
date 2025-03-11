@@ -533,10 +533,11 @@ def run():
 
 
 # Run the Simulation
-sim = run()
+# sim = run()
 
 # read the results
-output = parse_log_file(sim.log_filepath)
+# output = parse_log_file(sim.log_filepath)
+output = parse_log_file(Path('./outputs/enhanced_lifestyle__2025-03-10T163557.log'))
 
 # construct a dict of dataframes using lifestyle logs
 logs_df = output['tlo.methods.enhanced_lifestyle']

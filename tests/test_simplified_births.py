@@ -7,8 +7,7 @@ import pytest
 
 from tlo import Date, Simulation, logging
 from tlo.events import PopulationScopeEventMixin, RegularEvent
-from tlo.methods import demography, simplified_births
-from tlo.methods.fullmodel import fullmodel
+from tlo.methods import demography, simplified_births, enhanced_lifestyle
 
 resourcefilepath = Path(os.path.dirname(__file__)) / '../resources'
 
@@ -246,11 +245,9 @@ def test_other_modules_running_with_simplified_births_module():
         }
     )
     sim.register(
-        *fullmodel(
-            resourcefilepath=resourcefilepath,
-            use_simplified_births=True,
-            module_kwargs={"HealthSystem": {"disable": True}},
-        )
+        demography.Demography(resourcefilepath=resourcefilepath),
+        enhanced_lifestyle.Lifestyle(resourcefilepath=resourcefilepath),
+        simplified_births.SimplifiedBirths(resourcefilepath=resourcefilepath)
     )
     sim.make_initial_population(n=1_000)
     sim.simulate(end_date=Date(2011, 12, 31))

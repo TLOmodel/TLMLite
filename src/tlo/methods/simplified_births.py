@@ -10,7 +10,6 @@ import pandas as pd
 
 from tlo import DateOffset, Module, Parameter, Property, Types, logging
 from tlo.events import PopulationScopeEventMixin, RegularEvent
-from tlo.methods.contraception import get_medium_variant_asfr_from_wpp_resourcefile
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -160,7 +159,7 @@ class SimplifiedBirthsPoll(RegularEvent, PopulationScopeEventMixin):
     def __init__(self, module):
         self.months_between_polls = 1
         super().__init__(module, frequency=DateOffset(months=self.months_between_polls))
-        self.asfr = get_medium_variant_asfr_from_wpp_resourcefile(
+        self.asfr = self.get_medium_variant_asfr_from_wpp_resourcefile(
             dat=self.module.parameters['age_specific_fertility_rates'], months_exposure=self.months_between_polls)
 
     def apply(self, population):
@@ -172,6 +171,33 @@ class SimplifiedBirthsPoll(RegularEvent, PopulationScopeEventMixin):
 
         # Update breastfeeding status at six months
         self.update_breastfed_status()
+
+    def get_medium_variant_asfr_from_wpp_resourcefile(self, dat: pd.DataFrame, months_exposure: int) -> dict:
+        """Process the data on age-specific fertility rates into a form that can be used to quickly map
+        age-ranges to an age-specific fertility rate (for the "Medium Variant" in the WPP data source).
+        :param dat: Raw form of the data in `ResourceFile_ASFR_WPP.csv`
+        :param months_exposure: The time (in integer number of months) over which the risk of pregnancy should be
+        computed.
+        :returns: a dict, keyed by year, giving a dataframe of risk of pregnancy over a period, by age """
+
+        dat = dat.drop(dat[~dat.Variant.isin(['WPP_Estimates', 'WPP_Medium variant'])].index)
+        dat['Period-Start'] = dat['Period'].str.split('-').str[0].astype(int)
+        dat['Period-End'] = dat['Period'].str.split('-').str[1].astype(int)
+        years = range(min(dat['Period-Start'].values), 1 + max(dat['Period-End'].values))
+
+        # Convert the rates for asfr (rate of live-birth per year) to a rate per the frequency of this event repeating
+        dat['asfr_per_period'] = self.convert_annual_prob_to_monthly_prob(dat['asfr'], num_months=months_exposure)
+
+        asfr = dict()  # format is {year: {age-range: asfr}}
+        for year in years:
+            asfr[year] = dat.loc[
+                (year >= dat['Period-Start']) & (year <= dat['Period-End'])
+                ].set_index('Age_Grp')['asfr_per_period'].to_dict()
+
+        return asfr
+
+    def convert_annual_prob_to_monthly_prob(self, p_annual, num_months=1):
+        return 1.0 - ((1.0 - p_annual) ** (num_months / 12.0))
 
     def set_new_pregnancies(self):
         """Making women pregnant. Rate of doing so is based on age-specific fertility rates under assumption that every

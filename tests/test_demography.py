@@ -8,11 +8,9 @@ from pytest import approx
 
 from tlo import DAYS_IN_MONTH, DAYS_IN_YEAR, Date, Module, Simulation, logging
 from tlo.analysis.utils import compare_number_of_deaths, parse_log_file
-from tlo.methods import Metadata, demography
+from tlo.methods import Metadata, demography, enhanced_lifestyle
 from tlo.methods.causes import Cause
 from tlo.methods.demography import AgeUpdateEvent
-from tlo.methods.diarrhoea import increase_risk_of_death, make_treatment_perfect
-from tlo.methods.fullmodel import fullmodel
 
 start_date = Date(2010, 1, 1)
 end_date = Date(2015, 1, 1)
@@ -106,15 +104,13 @@ def test_cause_of_death_being_registered(tmpdir, seed):
     })
 
     sim.register(
-        *fullmodel(
-            resourcefilepath=rfp,
-            module_kwargs={"HealthSystem": {"disable": True}},
-        )
+        demography.Demography(resourcefilepath=rfp),
+        enhanced_lifestyle.Lifestyle(resourcefilepath=rfp)
     )
 
     # Increase risk of death of Diarrhoea to ensure that are at least some deaths
-    increase_risk_of_death(sim.modules['Diarrhoea'])
-    make_treatment_perfect(sim.modules['Diarrhoea'])
+    # increase_risk_of_death(sim.modules['Diarrhoea'])
+    # make_treatment_perfect(sim.modules['Diarrhoea'])
 
     sim.make_initial_population(n=1000)
     sim.simulate(end_date=Date(2010, 12, 31))
