@@ -104,6 +104,7 @@ def test_cause_of_death_being_registered(tmpdir, seed):
     })
 
     sim.register(
+        demography.Demography(resourcefilepath=rfp),
         enhanced_lifestyle.Lifestyle(resourcefilepath=rfp)
     )
 
